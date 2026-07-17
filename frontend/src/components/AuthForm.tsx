@@ -12,7 +12,6 @@ interface AuthFormProps {
   altLinkTo: string;
 }
 
-/** Shared username + password form used by both Login and Register. */
 export function AuthForm({
   title,
   submitLabel,
@@ -32,7 +31,6 @@ export function AuthForm({
     setSubmitting(true);
     try {
       await onSubmit(username.trim(), password);
-      // On success the auth state updates and the router redirects away.
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Something went wrong. Try again.",

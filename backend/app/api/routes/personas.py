@@ -1,5 +1,3 @@
-"""Persona routes — list built-ins, and CRUD for the caller's own personas."""
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +24,6 @@ def _to_read(p: Persona) -> PersonaRead:
 async def _get_own_persona(
     db: AsyncSession, user_id: int, persona_id: int
 ) -> Persona:
-    """Load a persona the user OWNS (not a built-in default), or 404."""
     persona = await db.get(Persona, persona_id)
     if persona is None or persona.user_id != user_id:
         raise HTTPException(
@@ -40,11 +37,9 @@ async def list_personas(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[PersonaRead]:
-    """Built-in defaults (user_id IS NULL) plus the caller's own personas."""
     result = await db.execute(
         select(Persona)
         .where(or_(Persona.user_id.is_(None), Persona.user_id == current_user.id))
-        # Defaults (NULL sorts first) before user-created, then by id.
         .order_by(Persona.user_id.is_(None).desc(), Persona.id)
     )
     return [_to_read(p) for p in result.scalars().all()]
@@ -91,7 +86,6 @@ async def delete_persona(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     persona = await _get_own_persona(db, current_user.id, persona_id)
-    # Conversations pinned to it keep working; their persona_id is SET NULL by FK.
     await db.delete(persona)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

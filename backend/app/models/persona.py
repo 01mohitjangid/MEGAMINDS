@@ -1,9 +1,3 @@
-"""Persona model — an AI personality a conversation can be pinned to.
-
-Seeded default personas have `user_id = NULL` (system-owned, visible to
-everyone). When a user creates their own persona it carries their `user_id`.
-"""
-
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -21,7 +15,6 @@ class Persona(Base):
     __tablename__ = "personas"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # NULL = built-in default persona available to all users.
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, default=None
     )

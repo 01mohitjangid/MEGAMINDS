@@ -1,5 +1,3 @@
-"""User model — an account that owns conversations and custom personas."""
-
 from datetime import datetime
 from typing import TYPE_CHECKING
 

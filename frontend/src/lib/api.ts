@@ -1,14 +1,3 @@
-/**
- * Thin, typed API client for the backend.
- *
- * A single place to configure the base URL and centralise request handling so
- * feature code (auth, chat, personas in later phases) stays clean. Auth token
- * injection and error normalisation will be layered on here in Phase 2.
- */
-
-// In production the frontend and backend share one Vercel domain, so calls go
-// to a same-origin "" base (e.g. "/api/..."). In local dev they run on separate
-// ports, so we point at the backend directly. VITE_API_BASE_URL overrides both.
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ??
   (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
@@ -23,8 +12,6 @@ export class ApiError extends Error {
   }
 }
 
-// --- Auth token storage ---
-// The JWT lives in localStorage so a page refresh keeps the user signed in.
 const TOKEN_KEY = "megaminds.token";
 
 export function getToken(): string | null {
@@ -36,7 +23,6 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
-/** Pull a human-readable message out of a FastAPI error body. */
 async function errorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { detail?: unknown };
@@ -46,12 +32,10 @@ async function errorMessage(response: Response): Promise<string> {
       if (typeof first.msg === "string") return first.msg;
     }
   } catch {
-    // Non-JSON body — fall through to the generic message.
   }
   return `Request failed (${response.status})`;
 }
 
-/** Perform a JSON request against the API and return the parsed body. */
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -68,7 +52,6 @@ export async function apiFetch<T>(
       },
     });
   } catch {
-    // Network-level failure (server down, CORS, DNS, offline).
     throw new ApiError("Unable to reach the API server.");
   }
 
@@ -76,7 +59,6 @@ export async function apiFetch<T>(
     throw new ApiError(await errorMessage(response), response.status);
   }
 
-  // 204 No Content (e.g. DELETE) has no body to parse.
   if (response.status === 204) {
     return undefined as T;
   }
@@ -86,7 +68,6 @@ export async function apiFetch<T>(
 
 export { API_BASE_URL };
 
-// --- Endpoint response types ---
 export interface HealthResponse {
   status: string;
   service: string;
@@ -103,7 +84,6 @@ export const health = {
   db: () => apiFetch<DbHealthResponse>("/api/health/db"),
 };
 
-// --- Auth ---
 export interface TokenResponse {
   access_token: string;
   token_type: string;
@@ -128,7 +108,6 @@ export const auth = {
   me: () => apiFetch<AuthUser>("/api/auth/me"),
 };
 
-// --- Chat: personas, conversations, messages ---
 export interface Persona {
   id: number;
   name: string;
@@ -206,7 +185,6 @@ export const conversations = {
     }),
 };
 
-// --- Streaming (SSE) ---
 interface StreamFrame {
   type: "start" | "token" | "done" | "error";
   text?: string;
@@ -223,12 +201,6 @@ export interface StreamHandlers {
   onError?: (detail: string) => void;
 }
 
-/**
- * POST a message and read the reply as a Server-Sent Events stream.
- * Aborting `signal` stops the stream (the backend persists whatever was
- * generated so far). Rejects with ApiError on a non-stream error response, and
- * with an AbortError DOMException when the caller aborts.
- */
 export async function streamMessage(
   conversationId: number,
   content: string,
@@ -250,8 +222,6 @@ export async function streamMessage(
   );
 
   if (!response.ok || response.body === null) {
-    // Surfaced by the caller's catch (throw); onError is reserved for in-stream
-    // 'error' frames, so we don't double-report here.
     throw new ApiError(await errorMessage(response), response.status);
   }
 
@@ -265,7 +235,7 @@ export async function streamMessage(
     buffer += decoder.decode(value, { stream: true });
 
     const frames = buffer.split("\n\n");
-    buffer = frames.pop() ?? ""; // keep any trailing partial frame
+    buffer = frames.pop() ?? "";
 
     for (const frame of frames) {
       const line = frame.trim();
