@@ -1,18 +1,45 @@
 import { useEffect, useRef } from "react";
+import { motion } from "motion/react";
 import type { Message } from "../../lib/api";
 
 interface MessageThreadProps {
   messages: Message[];
   streaming: boolean;
   streamingText: string;
+  personaName: string;
 }
 
-/** The scrolling conversation view. Auto-scrolls to the newest content and
- *  renders the in-progress assistant reply as it types in. */
+const rise = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  transition: { type: "spring", stiffness: 380, damping: 32 },
+} as const;
+
+function AssistantCard({
+  personaName,
+  children,
+}: {
+  personaName: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div className="ai-card" {...rise}>
+      <div className="ai-card__head">
+        <span className="ai-card__avatar" aria-hidden />
+        <span className="ai-card__name">{personaName}</span>
+      </div>
+      <div className="ai-card__body">{children}</div>
+    </motion.div>
+  );
+}
+
+/** Conversation view — user messages as compact pills on the right, assistant
+ *  replies as clean cards with the persona identity, like the reference. */
 export function MessageThread({
   messages,
   streaming,
   streamingText,
+  personaName,
 }: MessageThreadProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -20,30 +47,30 @@ export function MessageThread({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming, streamingText]);
 
-  if (messages.length === 0 && !streaming) {
-    return (
-      <div className="thread thread--empty">
-        <p className="subtitle">Send a message to start the conversation.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="thread">
-      {messages.map((m) => (
-        <div key={m.id} className={`bubble bubble--${m.role}`}>
-          <span className="bubble__role">{m.role === "user" ? "You" : "AI"}</span>
-          <div className="bubble__content">{m.content}</div>
-        </div>
-      ))}
+      <div className="thread__inner">
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <motion.div key={m.id} className="msg-pill" {...rise}>
+              {m.content}
+            </motion.div>
+          ) : (
+            <AssistantCard key={m.id} personaName={personaName}>
+              {m.content}
+            </AssistantCard>
+          ),
+        )}
 
-      {streaming && (
-        <div className="bubble bubble--assistant">
-          <span className="bubble__role">AI</span>
-          <div className="bubble__content">
+        {streaming && (
+          <AssistantCard personaName={personaName}>
             {streamingText === "" ? (
-              <span className="bubble__thinking">
-                <span className="dot-typing" />
+              <span className="thinking">
+                <span className="dot-typing" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                </span>
                 Thinking…
               </span>
             ) : (
@@ -52,11 +79,11 @@ export function MessageThread({
                 <span className="cursor" aria-hidden />
               </>
             )}
-          </div>
-        </div>
-      )}
+          </AssistantCard>
+        )}
 
-      <div ref={bottomRef} />
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

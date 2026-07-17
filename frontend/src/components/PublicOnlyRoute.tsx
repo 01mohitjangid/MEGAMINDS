@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/auth-context";
+import { AILoader } from "./AILoader";
 
 /**
  * Wraps routes that only make sense when signed OUT (login, register). Once a
@@ -11,11 +12,7 @@ export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <main className="shell">
-        <p className="subtitle">Loading…</p>
-      </main>
-    );
+    return <AILoader text="MegaMinds" />;
   }
 
   if (user !== null) {

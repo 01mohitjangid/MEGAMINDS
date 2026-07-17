@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "../auth/auth-context";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Composer } from "../components/chat/Composer";
 import { MessageThread } from "../components/chat/MessageThread";
 import { PersonaManager } from "../components/chat/PersonaManager";
 import { Sidebar } from "../components/chat/Sidebar";
+import {
+  BookIcon,
+  FlagIcon,
+  MenuIcon,
+  SendIcon,
+  StarIcon,
+} from "../components/icons";
 import {
   ApiError,
   conversations as convApi,
@@ -14,6 +22,12 @@ import {
   type Message,
   type Persona,
 } from "../lib/api";
+
+const SUGGESTIONS = [
+  { text: "Walk me through how to apply for a new role", Icon: BookIcon },
+  { text: "Find hotels for a New Year's trip to Hanoi", Icon: FlagIcon },
+  { text: "Suggest the best parks to visit in Bali", Icon: StarIcon },
+];
 
 export default function Chat() {
   const { user, logout } = useAuth();
@@ -26,17 +40,32 @@ export default function Chat() {
   const [streamingText, setStreamingText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Open by default; remembered across sessions. Docked on desktop (CSS).
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => localStorage.getItem("megaminds.sidebar") !== "closed",
+  );
+  useEffect(() => {
+    localStorage.setItem("megaminds.sidebar", sidebarOpen ? "open" : "closed");
+  }, [sidebarOpen]);
+  // On small screens picking a chat should close the drawer; on desktop it stays.
+  const closeSidebarIfMobile = () => {
+    if (window.matchMedia("(max-width: 1023px)").matches) setSidebarOpen(false);
+  };
   const [personaManagerOpen, setPersonaManagerOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [homeDraft, setHomeDraft] = useState("");
 
   const activeIdRef = useRef<number | null>(activeId);
   const abortRef = useRef<AbortController | null>(null);
+  // Synchronous re-entry lock. `streaming` is React state and updates a tick
+  // too late to stop a rapid double click/Enter — the second send would fire
+  // before it flips, and on the home screen each fire creates its own
+  // conversation. This ref flips instantly, so a second send is dropped.
+  const sendingRef = useRef(false);
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
 
-  // Auto-dismiss the error toast.
   useEffect(() => {
     if (error === null) return;
     const t = setTimeout(() => setError(null), 5000);
@@ -58,7 +87,7 @@ export default function Chat() {
 
   const openConversation = useCallback(async (id: number) => {
     setActiveId(id);
-    setSidebarOpen(false);
+    closeSidebarIfMobile();
     setError(null);
     setMessages([]);
     try {
@@ -69,17 +98,10 @@ export default function Chat() {
     }
   }, []);
 
-  async function handleNewChat() {
-    setError(null);
-    try {
-      const conv = await convApi.create(newPersonaId);
-      setConversations((prev) => [conv, ...prev]);
-      setActiveId(conv.id);
-      setMessages([]);
-      setSidebarOpen(false);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to start a chat.");
-    }
+  function goHome() {
+    setActiveId(null);
+    setMessages([]);
+    closeSidebarIfMobile();
   }
 
   async function confirmDelete() {
@@ -89,17 +111,13 @@ export default function Chat() {
     try {
       await convApi.remove(id);
       setConversations((prev) => prev.filter((c) => c.id !== id));
-      if (id === activeId) {
-        setActiveId(null);
-        setMessages([]);
-      }
+      if (id === activeId) goHome();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to delete conversation.");
     }
   }
 
   async function handleRename(id: number, title: string) {
-    // Optimistic; revert on failure.
     const prevTitle = conversations.find((c) => c.id === id)?.title;
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, title } : c)),
@@ -118,11 +136,9 @@ export default function Chat() {
     abortRef.current?.abort();
   }
 
-  async function handleSend(content: string) {
-    if (activeId === null) return;
-    const convId = activeId;
+  /** Stream a message into a conversation (shared by home + chat sends). */
+  async function streamInto(convId: number, content: string) {
     setError(null);
-
     const tempUserId = -Date.now();
     setMessages((prev) => [
       ...prev,
@@ -157,7 +173,6 @@ export default function Chat() {
         errored = true;
         setError(err instanceof ApiError ? err.message : "Failed to stream reply.");
       }
-      // AbortError = user pressed Stop; the backend saved whatever streamed.
     } finally {
       abortRef.current = null;
       setStreaming(false);
@@ -172,7 +187,6 @@ export default function Chat() {
               { id: tempUserId - 1, role: "assistant", content: finalText, created_at: "" },
             ];
           }
-          // Nothing generated + errored → backend rolled back the user turn.
           if (errored) return prev.filter((m) => m.id !== tempUserId);
           return prev;
         });
@@ -191,25 +205,89 @@ export default function Chat() {
     }
   }
 
+  async function handleSend(content: string) {
+    if (activeId === null || sendingRef.current) return;
+    sendingRef.current = true;
+    try {
+      await streamInto(activeId, content);
+    } finally {
+      sendingRef.current = false;
+    }
+  }
+
+  /** Home flow: create a conversation with the chosen persona, then send. */
+  async function startChatWith(content: string) {
+    const text = content.trim();
+    if (!text || streaming || sendingRef.current) return;
+    sendingRef.current = true;
+    try {
+      const conv = await convApi.create(newPersonaId);
+      setConversations((prev) => [conv, ...prev]);
+      setActiveId(conv.id);
+      activeIdRef.current = conv.id;
+      setMessages([]);
+      setHomeDraft("");
+      await streamInto(conv.id, text);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to start a chat.");
+    } finally {
+      sendingRef.current = false;
+    }
+  }
+
+  function handleHomeSubmit(e: FormEvent) {
+    e.preventDefault();
+    startChatWith(homeDraft);
+  }
+
   const activeConversation = conversations.find((c) => c.id === activeId) ?? null;
+  const activePersona =
+    activeConversation?.persona_id != null
+      ? personas.find((p) => p.id === activeConversation.persona_id) ?? null
+      : null;
+  const firstName = user?.username ?? "";
+  const recentChats = conversations.slice(0, 4);
 
   return (
-    <div className={`chat${sidebarOpen ? " chat--sidebar-open" : ""}`}>
+    <div className={`app${sidebarOpen ? " app--sidebar-open" : ""}`}>
+      {/* Top bar */}
+      <header className="topbar">
+        <div className="topbar__left">
+          <button
+            className="icon-btn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <MenuIcon />
+          </button>
+          <button className="topbar__brand" onClick={goHome} aria-label="Home">
+            <span className="brand-mark" aria-hidden>✦</span>
+          </button>
+        </div>
+        <div className="topbar__right">
+          <span className="user-pill" title={firstName} aria-label={firstName}>
+            <span className="user-pill__avatar" aria-hidden>
+              {firstName.slice(0, 1).toUpperCase()}
+            </span>
+          </span>
+          <button className="btn btn--ghost btn--sm" onClick={logout}>
+            Log out
+          </button>
+        </div>
+      </header>
+
       <div
-        className="chat__scrim"
+        className="app__scrim"
         onClick={() => setSidebarOpen(false)}
         aria-hidden
       />
 
       <Sidebar
-        personas={personas}
         conversations={conversations}
         activeId={activeId}
-        newPersonaId={newPersonaId}
-        username={user?.username ?? ""}
+        username={firstName}
         loading={loadingList}
-        onPersonaChange={setNewPersonaId}
-        onNewChat={handleNewChat}
+        onNewChat={goHome}
         onSelect={openConversation}
         onDelete={(id) => setConfirmDeleteId(id)}
         onRename={handleRename}
@@ -218,67 +296,160 @@ export default function Chat() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <main className="chat__main">
+      <main className="app__main">
         {activeConversation === null ? (
-          <div className="chat__placeholder">
-            <button
-              className="chat__menu"
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open sidebar"
-            >
-              ☰
-            </button>
-            <h1>MegaMinds</h1>
-            <p className="subtitle">
-              Pick a persona and start a new chat, or open a conversation.
-            </p>
-          </div>
-        ) : (
-          <>
-            <header className="chat__header">
-              <button
-                className="chat__menu"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Open sidebar"
-              >
-                ☰
-              </button>
-              <h2 className="chat__title">{activeConversation.title}</h2>
-            </header>
+          /* ---------- Home / greeting ---------- */
+          <motion.div
+            className="home"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="home__inner">
+            <h1 className="home__greeting">
+              Hello,
+              <br />
+              How can I help you today?
+            </h1>
 
+            <form className="home__composer" onSubmit={handleHomeSubmit}>
+              <input
+                className="home__input"
+                placeholder="Ask anything to start a new chat…"
+                value={homeDraft}
+                autoFocus
+                onChange={(e) => setHomeDraft(e.target.value)}
+              />
+              <div className="home__composer-row">
+                <select
+                  className="persona-pill"
+                  aria-label="Choose persona"
+                  value={newPersonaId ?? ""}
+                  onChange={(e) =>
+                    setNewPersonaId(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                >
+                  <option value="">No persona</option>
+                  {personas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn btn--round"
+                  type="submit"
+                  disabled={homeDraft.trim() === ""}
+                  aria-label="Start chat"
+                >
+                  <SendIcon size={15} />
+                </button>
+              </div>
+            </form>
+
+            <section className="home__section">
+              <div className="home__section-head">
+                <h2>Explore new ideas</h2>
+              </div>
+              <div className="suggestions">
+                {SUGGESTIONS.map(({ text, Icon }) => (
+                  <button
+                    key={text}
+                    className="suggestion-card"
+                    onClick={() => startChatWith(text)}
+                  >
+                    <span>{text}</span>
+                    <span className="suggestion-card__icon" aria-hidden>
+                      <Icon />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {recentChats.length > 0 && (
+              <section className="home__section">
+                <div className="home__section-head">
+                  <h2>Continue from last chats</h2>
+                  <button
+                    className="link-btn"
+                    onClick={() => setSidebarOpen(true)}
+                  >
+                    See all ›
+                  </button>
+                </div>
+                <div className="recent-grid">
+                  {recentChats.map((c) => (
+                    <button
+                      key={c.id}
+                      className="recent-card"
+                      onClick={() => openConversation(c.id)}
+                    >
+                      <span className="recent-card__title">{c.title}</span>
+                      <span className="recent-card__meta">
+                        {new Date(c.updated_at).toLocaleDateString()}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+            </div>
+          </motion.div>
+        ) : (
+          /* ---------- Conversation ---------- */
+          <div className="chat-view">
             <MessageThread
               messages={messages}
               streaming={streaming}
               streamingText={streamingText}
+              personaName={activePersona?.name ?? "Assistant"}
             />
             <Composer streaming={streaming} onSend={handleSend} onStop={handleStop} />
-          </>
+          </div>
         )}
       </main>
 
-      {error !== null && (
-        <div className="toast" role="alert" onClick={() => setError(null)}>
-          {error}
-        </div>
-      )}
+      <AnimatePresence>
+        {error !== null && (
+          <motion.div
+            key="toast"
+            className="toast"
+            role="alert"
+            onClick={() => setError(null)}
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 420, damping: 30 }}
+          >
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {personaManagerOpen && (
-        <PersonaManager
-          personas={personas}
-          onClose={() => setPersonaManagerOpen(false)}
-          onChanged={loadPersonas}
-          onError={setError}
-        />
-      )}
+      <AnimatePresence>
+        {personaManagerOpen && (
+          <PersonaManager
+            key="persona-manager"
+            personas={personas}
+            onClose={() => setPersonaManagerOpen(false)}
+            onChanged={loadPersonas}
+            onError={setError}
+          />
+        )}
+      </AnimatePresence>
 
-      {confirmDeleteId !== null && (
-        <ConfirmDialog
-          title="Delete conversation"
-          message="This conversation and its messages will be permanently deleted."
-          onConfirm={confirmDelete}
-          onCancel={() => setConfirmDeleteId(null)}
-        />
-      )}
+      <AnimatePresence>
+        {confirmDeleteId !== null && (
+          <ConfirmDialog
+            key="confirm-delete"
+            title="Delete conversation"
+            message="This conversation and its messages will be permanently deleted."
+            onConfirm={confirmDelete}
+            onCancel={() => setConfirmDeleteId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
