@@ -1,0 +1,4 @@
+# Vercel installs these for the Python serverless function in api/.
+# The backend's real dependency list lives in backend/requirements.txt — we
+# just point at it so there is a single source of truth.
+-r backend/requirements.txt

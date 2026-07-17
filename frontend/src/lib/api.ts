@@ -6,8 +6,12 @@
  * injection and error normalisation will be layered on here in Phase 2.
  */
 
+// In production the frontend and backend share one Vercel domain, so calls go
+// to a same-origin "" base (e.g. "/api/..."). In local dev they run on separate
+// ports, so we point at the backend directly. VITE_API_BASE_URL overrides both.
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
+  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ??
+  (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
 
 export class ApiError extends Error {
   readonly status?: number;
