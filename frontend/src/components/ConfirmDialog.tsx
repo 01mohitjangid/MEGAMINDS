@@ -1,3 +1,5 @@
+import { motion } from "motion/react";
+
 interface ConfirmDialogProps {
   title: string;
   message: string;
@@ -15,12 +17,23 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div
+    <motion.div
+      className="modal-overlay"
+      onClick={onCancel}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
         className="modal modal--sm"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.92, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ type: "spring", stiffness: 420, damping: 30 }}
       >
         <h3 className="modal__title">{title}</h3>
         <p className="modal__body">{message}</p>
@@ -32,7 +45,7 @@ export function ConfirmDialog({
             {confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
