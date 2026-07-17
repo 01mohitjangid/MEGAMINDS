@@ -1,11 +1,3 @@
-"""Seed the built-in default personas.
-
-Idempotent: run it as many times as you like — existing defaults (matched by
-name, user_id IS NULL) are left untouched, missing ones are inserted.
-
-    python -m app.seed
-"""
-
 import asyncio
 
 from sqlalchemy import select
@@ -82,7 +74,6 @@ DEFAULT_PERSONAS: list[dict[str, str]] = [
 
 
 async def seed_personas() -> int:
-    """Insert any missing default personas. Returns how many were added."""
     added = 0
     async with AsyncSessionLocal() as db:
         for data in DEFAULT_PERSONAS:

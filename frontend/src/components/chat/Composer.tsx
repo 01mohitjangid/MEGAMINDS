@@ -7,8 +7,6 @@ interface ComposerProps {
   onStop: () => void;
 }
 
-/** Message input. Enter sends; Shift+Enter inserts a newline. While the AI is
- *  streaming, the send button becomes a Stop button. */
 export function Composer({ streaming, onSend, onStop }: ComposerProps) {
   const [value, setValue] = useState("");
 

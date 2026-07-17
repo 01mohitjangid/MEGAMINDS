@@ -33,8 +33,6 @@ function AssistantCard({
   );
 }
 
-/** Conversation view — user messages as compact pills on the right, assistant
- *  replies as clean cards with the persona identity, like the reference. */
 export function MessageThread({
   messages,
   streaming,

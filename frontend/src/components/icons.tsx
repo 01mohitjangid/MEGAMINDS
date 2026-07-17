@@ -1,6 +1,3 @@
-/** Minimal inline SVG icon set (Lucide-style, 24px grid, stroke-based) so we
- *  never rely on emoji/text glyphs for UI controls. */
-
 interface IconProps {
   size?: number;
   className?: string;

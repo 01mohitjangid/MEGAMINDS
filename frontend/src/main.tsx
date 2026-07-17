@@ -8,8 +8,6 @@ import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {/* reducedMotion="user" makes every motion spring honor the OS
-        "Reduce Motion" setting (CSS animations are handled in index.css). */}
     <MotionConfig reducedMotion="user">
       <BrowserRouter>
         <AuthProvider>

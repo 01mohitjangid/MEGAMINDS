@@ -1,5 +1,3 @@
-"""Message model — a single turn (user or assistant) in a conversation."""
-
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -19,7 +17,6 @@ class Message(Base):
     conversation_id: Mapped[int] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
-    # "user" or "assistant" — kept as a plain string to avoid enum migrations.
     role: Mapped[str] = mapped_column(String(20))
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(

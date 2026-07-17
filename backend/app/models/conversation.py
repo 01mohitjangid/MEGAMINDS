@@ -1,5 +1,3 @@
-"""Conversation model — a chat thread owned by a user, pinned to a persona."""
-
 from datetime import datetime
 from typing import TYPE_CHECKING
 

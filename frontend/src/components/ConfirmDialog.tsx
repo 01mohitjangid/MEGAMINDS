@@ -8,7 +8,6 @@ interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-/** Small modal confirmation used before destructive actions. */
 export function ConfirmDialog({
   title,
   message,
