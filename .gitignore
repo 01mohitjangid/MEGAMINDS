@@ -33,3 +33,4 @@ postgres-data/
 
 # ---- Tooling artifacts ----
 .gstack/
+.claude/
