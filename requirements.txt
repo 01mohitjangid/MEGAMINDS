@@ -1,4 +1,24 @@
-# Vercel installs these for the Python serverless function in api/.
-# The backend's real dependency list lives in backend/requirements.txt — we
-# just point at it so there is a single source of truth.
--r backend/requirements.txt
+# Python dependencies for the Vercel serverless function in api/.
+#
+# Vercel parses this file itself and does NOT support pip's "-r other.txt"
+# include, so the runtime packages are listed directly here. This is the same
+# set as backend/requirements.txt, minus uvicorn/alembic (Vercel provides the
+# server, and migrations aren't run at request time). Keep the two in sync.
+
+# --- Web framework ---
+fastapi==0.118.0
+
+# --- Database (async SQLAlchemy 2.0 + psycopg3 driver) ---
+sqlalchemy==2.0.43
+psycopg[binary]==3.2.10
+greenlet==3.2.4  # required by SQLAlchemy's async engine
+
+# --- Config / settings ---
+pydantic-settings==2.11.0
+
+# --- Auth ---
+bcrypt==4.2.1
+pyjwt==2.10.1
+
+# --- AI ---
+google-genai==2.12.1
