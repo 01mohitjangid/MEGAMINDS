@@ -11,5 +11,9 @@ greenlet==3.2.4  # required by SQLAlchemy's async engine
 # --- Config / settings ---
 pydantic-settings==2.11.0
 
-# Auth (Phase 2) and AI (Phase 3) dependencies are added in their own phases
-# to keep each phase's install surface small and verifiable.
+# --- Auth (Phase 2) ---
+bcrypt==4.2.1          # password hashing (used directly, no passlib)
+pyjwt==2.10.1          # JWT access tokens
+
+# AI (Phase 3) dependencies are added in their own phase to keep each phase's
+# install surface small and verifiable.
