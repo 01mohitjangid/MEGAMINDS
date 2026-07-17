@@ -33,7 +33,6 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      {/* Anything else falls back to the dashboard (which itself guards auth). */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

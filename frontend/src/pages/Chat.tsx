@@ -40,14 +40,12 @@ export default function Chat() {
   const [streamingText, setStreamingText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
-  // Open by default; remembered across sessions. Docked on desktop (CSS).
   const [sidebarOpen, setSidebarOpen] = useState(
     () => localStorage.getItem("megaminds.sidebar") !== "closed",
   );
   useEffect(() => {
     localStorage.setItem("megaminds.sidebar", sidebarOpen ? "open" : "closed");
   }, [sidebarOpen]);
-  // On small screens picking a chat should close the drawer; on desktop it stays.
   const closeSidebarIfMobile = () => {
     if (window.matchMedia("(max-width: 1023px)").matches) setSidebarOpen(false);
   };
@@ -57,10 +55,6 @@ export default function Chat() {
 
   const activeIdRef = useRef<number | null>(activeId);
   const abortRef = useRef<AbortController | null>(null);
-  // Synchronous re-entry lock. `streaming` is React state and updates a tick
-  // too late to stop a rapid double click/Enter — the second send would fire
-  // before it flips, and on the home screen each fire creates its own
-  // conversation. This ref flips instantly, so a second send is dropped.
   const sendingRef = useRef(false);
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -136,7 +130,6 @@ export default function Chat() {
     abortRef.current?.abort();
   }
 
-  /** Stream a message into a conversation (shared by home + chat sends). */
   async function streamInto(convId: number, content: string) {
     setError(null);
     const tempUserId = -Date.now();
@@ -215,7 +208,6 @@ export default function Chat() {
     }
   }
 
-  /** Home flow: create a conversation with the chosen persona, then send. */
   async function startChatWith(content: string) {
     const text = content.trim();
     if (!text || streaming || sendingRef.current) return;
@@ -250,7 +242,6 @@ export default function Chat() {
 
   return (
     <div className={`app${sidebarOpen ? " app--sidebar-open" : ""}`}>
-      {/* Top bar */}
       <header className="topbar">
         <div className="topbar__left">
           <button
@@ -298,7 +289,6 @@ export default function Chat() {
 
       <main className="app__main">
         {activeConversation === null ? (
-          /* ---------- Home / greeting ---------- */
           <motion.div
             className="home"
             initial={{ opacity: 0, y: 14 }}
@@ -397,7 +387,6 @@ export default function Chat() {
             </div>
           </motion.div>
         ) : (
-          /* ---------- Conversation ---------- */
           <div className="chat-view">
             <MessageThread
               messages={messages}
