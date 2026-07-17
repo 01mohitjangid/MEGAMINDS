@@ -29,28 +29,104 @@ token.
 
 ---
 
-## 🗂️ Project Structure
+## 🗂️ Architecture — every file explained
 
 ```
 MegaMinds/
-├── backend/                 # FastAPI REST API
+│
+├── backend/                          # FastAPI REST API (Python)
 │   ├── app/
-│   │   ├── api/routes/       # Endpoints: auth, personas, conversations, health
-│   │   ├── core/             # config (.env), database, security (JWT/bcrypt)
-│   │   ├── models/           # SQLAlchemy tables: user, persona, conversation, message
-│   │   ├── schemas/          # Pydantic request/response shapes
-│   │   ├── services/gemini.py# The one place that talks to the AI
-│   │   ├── seed.py           # Seeds the default personas
-│   │   └── main.py           # App entry point
-│   ├── alembic/              # Database migrations
-│   └── requirements.txt
-├── frontend/                # React + Vite single-page app
+│   │   ├── main.py                   # App entry point: creates the FastAPI app, CORS, mounts /api routes
+│   │   ├── seed.py                   # `python -m app.seed` — inserts the default personas (idempotent)
+│   │   │
+│   │   ├── core/                     # Cross-cutting foundations
+│   │   │   ├── config.py             # All settings, loaded from .env (DB URL, JWT, Gemini key/model)
+│   │   │   ├── database.py           # Async SQLAlchemy engine + session factory + `get_db` dependency
+│   │   │   └── security.py           # bcrypt password hashing + JWT create/decode
+│   │   │
+│   │   ├── models/                   # Database tables (SQLAlchemy ORM)
+│   │   │   ├── user.py               # users — id, username, hashed_password
+│   │   │   ├── persona.py            # personas — system_prompt; user_id NULL = built-in default
+│   │   │   ├── conversation.py       # conversations — owned by a user, pinned to a persona
+│   │   │   └── message.py            # messages — one turn (role: user/assistant) in a conversation
+│   │   │
+│   │   ├── schemas/                  # Pydantic request/response shapes (the API contract)
+│   │   │   ├── auth.py               # RegisterRequest, LoginRequest, Token, UserRead
+│   │   │   └── chat.py               # Persona/Conversation/Message create-read-update shapes
+│   │   │
+│   │   ├── api/
+│   │   │   ├── router.py             # Aggregates every route module under /api
+│   │   │   ├── deps.py               # `get_current_user` — turns the Bearer token into a User (or 401)
+│   │   │   └── routes/
+│   │   │       ├── health.py         # GET /health, /health/db — liveness + DB probe
+│   │   │       ├── auth.py           # POST /auth/register, /auth/login · GET /auth/me
+│   │   │       ├── personas.py       # GET/POST /personas · PATCH/DELETE /personas/{id}
+│   │   │       └── conversations.py  # Conversation CRUD + rename + send-message +
+│   │   │                             #   POST /conversations/{id}/messages/stream (SSE streaming,
+│   │   │                             #   multi-turn context assembly, AI-generated titles)
+│   │   │
+│   │   └── services/
+│   │       └── gemini.py             # The ONLY place that talks to Google Gemini
+│   │                                 #   (generate_reply + stream_reply, role mapping, error types)
+│   │
+│   ├── alembic/                      # Database migrations
+│   │   ├── env.py                    # Wires Alembic to our settings + model metadata
+│   │   └── versions/                 # One file per schema change (users/personas/convs/messages)
+│   ├── alembic.ini                   # Alembic config
+│   ├── requirements.txt              # Python dependencies (pinned)
+│   └── .env.example                  # Template for backend/.env — copy & fill, never commit .env
+│
+├── frontend/                         # React + TypeScript single-page app (Vite)
+│   ├── index.html                    # HTML shell Vite injects the app into
+│   ├── vite.config.ts                # Vite build/dev-server config
+│   ├── package.json                  # JS dependencies & scripts (dev/build/lint)
 │   └── src/
-│       ├── components/chat/  # Sidebar, MessageThread, Composer, PersonaManager
-│       ├── pages/Chat.tsx    # Main chat screen
-│       └── lib/api.ts        # Calls the backend
-└── docker-compose.yml       # Local PostgreSQL (port 5433)
+│       ├── main.tsx                  # React entry: Router + AuthProvider + MotionConfig wrap the app
+│       ├── App.tsx                   # Routes: /login, /register, / (protected chat)
+│       ├── index.css                 # Design tokens (colors, fonts, dark mode) + global styles
+│       ├── App.css                   # All component styles (home, chat, sidebar, modals…)
+│       │
+│       ├── lib/
+│       │   └── api.ts                # Typed API client: token storage, every endpoint,
+│       │                             #   and the SSE stream reader (streamMessage + AbortController)
+│       │
+│       ├── auth/
+│       │   ├── auth-context.ts       # React context + `useAuth()` hook
+│       │   └── AuthProvider.tsx      # Holds the user, restores session from the stored JWT
+│       │
+│       ├── pages/
+│       │   ├── Login.tsx             # Login page (uses AuthForm)
+│       │   ├── Register.tsx          # Register page (uses AuthForm)
+│       │   └── Chat.tsx              # Main screen: greeting home (suggestions, recent chats)
+│       │                             #   + conversation view + streaming send/stop logic
+│       │
+│       └── components/
+│           ├── AuthForm.tsx          # Shared username+password form
+│           ├── ProtectedRoute.tsx    # Redirects logged-out users to /login
+│           ├── PublicOnlyRoute.tsx   # Redirects logged-in users away from /login
+│           ├── AILoader.tsx          # Animated fullscreen loader (auth check)
+│           ├── ConfirmDialog.tsx     # "Are you sure?" modal for deletes
+│           ├── icons.tsx             # Inline SVG icon set (no emoji icons)
+│           └── chat/
+│               ├── Sidebar.tsx       # Drawer: new chat, conversation list, rename/delete
+│               ├── MessageThread.tsx # The thread: user pills + assistant cards + typing cursor
+│               ├── Composer.tsx      # Message input (Enter=send, Stop while streaming)
+│               └── PersonaManager.tsx# Modal to create/edit/delete your personas
+│
+├── api/
+│   └── index.py                      # Vercel serverless entry — wraps the FastAPI app for deploy
+├── vercel.json                       # Vercel config: builds frontend + routes /api/* to FastAPI
+├── requirements.txt                  # Root copy of backend deps (Vercel reads this)
+├── docker-compose.yml                # Local PostgreSQL 16 (host port 5433, volume-persisted)
+└── .gitignore                        # Keeps .env, node_modules, .venv etc. out of git
 ```
+
+**How a message flows:** `Composer.tsx` → `streamMessage()` in `lib/api.ts` →
+`POST /api/conversations/{id}/messages/stream` in `conversations.py` → ownership
+check (`deps.py`) → history loaded from `models/message.py` → persona's
+system_prompt + history sent to Gemini (`services/gemini.py`) → tokens streamed
+back as SSE → `MessageThread.tsx` renders them live → full reply + AI-generated
+title persisted to PostgreSQL.
 
 ---
 
