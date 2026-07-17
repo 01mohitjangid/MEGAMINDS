@@ -1,15 +1,9 @@
 interface AILoaderProps {
   size?: number;
   text?: string;
-  /** Fill the viewport (auth boot, page loads) or sit inline in a container. */
   fullscreen?: boolean;
 }
 
-/**
- * Animated AI loader — a rotating ring of layered inset glows around a
- * letter-by-letter pulsing label. Ported from the reference ai-loader
- * (Tailwind/styled-jsx) to this project's plain-CSS token system.
- */
 export function AILoader({
   size = 180,
   text = "Generating",

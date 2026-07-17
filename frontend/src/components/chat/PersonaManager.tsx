@@ -7,12 +7,12 @@ import { XIcon } from "../icons";
 interface PersonaManagerProps {
   personas: Persona[];
   onClose: () => void;
-  onChanged: () => void; // re-fetch the persona list in the parent
+  onChanged: () => void;
   onError: (message: string) => void;
 }
 
 interface FormState {
-  id: number | null; // null = creating
+  id: number | null;
   name: string;
   description: string;
   system_prompt: string;
@@ -25,7 +25,6 @@ const EMPTY_FORM: FormState = {
   system_prompt: "",
 };
 
-/** Modal to create / edit / delete the user's own personas. */
 export function PersonaManager({
   personas,
   onClose,

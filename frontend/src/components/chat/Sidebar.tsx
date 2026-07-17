@@ -17,7 +17,6 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-/** Left column: persona picker + New chat, the conversation list, and account. */
 export function Sidebar({
   conversations,
   activeId,

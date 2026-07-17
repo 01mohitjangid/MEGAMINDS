@@ -1,5 +1,3 @@
-"""Request/response schemas for personas, conversations, and messages."""
-
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -10,7 +8,6 @@ class PersonaRead(BaseModel):
     name: str
     description: str
     system_prompt: str
-    # True for built-in defaults (user_id IS NULL), False for user-created.
     is_default: bool
 
     model_config = {"from_attributes": True}
@@ -26,12 +23,10 @@ class MessageRead(BaseModel):
 
 
 class ConversationCreate(BaseModel):
-    # Optional: start a conversation pinned to a persona (or none).
     persona_id: int | None = None
 
 
 class ConversationRead(BaseModel):
-    """Sidebar view — no messages."""
 
     id: int
     title: str
@@ -43,7 +38,6 @@ class ConversationRead(BaseModel):
 
 
 class ConversationDetail(ConversationRead):
-    """Full view — includes the ordered message thread."""
 
     messages: list[MessageRead]
 
@@ -69,7 +63,6 @@ class MessageCreate(BaseModel):
 
 
 class SendMessageResponse(BaseModel):
-    """Result of sending a message: both turns plus the (maybe new) title."""
 
     user_message: MessageRead
     assistant_message: MessageRead

@@ -2,11 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth, getToken, setToken, type AuthUser } from "../lib/api";
 import { AuthContext, type AuthContextValue } from "./auth-context";
 
-/**
- * Holds the signed-in user in React state and keeps the JWT in localStorage.
- * On mount, if a token is already stored it verifies it via /auth/me so a
- * refresh keeps the session; an invalid token is discarded.
- */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);

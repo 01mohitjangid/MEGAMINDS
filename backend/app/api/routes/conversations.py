@@ -1,9 +1,3 @@
-"""Conversation routes — CRUD plus the send-a-message chat endpoint.
-
-Every route is scoped to the authenticated user: a conversation that isn't
-theirs returns 404 (never 403), so its existence isn't even leaked.
-"""
-
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -36,7 +30,6 @@ _TITLE_MAX_LEN = 50
 async def _get_owned_conversation(
     db: AsyncSession, user_id: int, conversation_id: int
 ) -> Conversation:
-    """Load a conversation that belongs to the user, or raise 404."""
     conversation = await db.get(Conversation, conversation_id)
     if conversation is None or conversation.user_id != user_id:
         raise HTTPException(
@@ -48,7 +41,6 @@ async def _get_owned_conversation(
 async def _validate_persona(
     db: AsyncSession, user_id: int, persona_id: int | None
 ) -> None:
-    """Ensure a chosen persona is a built-in default or owned by the user."""
     if persona_id is None:
         return
     result = await db.execute(
@@ -64,7 +56,6 @@ async def _validate_persona(
 
 
 def _title_from(text: str) -> str:
-    """Derive a conversation title from the first user message."""
     single_line = " ".join(text.split())
     if len(single_line) <= _TITLE_MAX_LEN:
         return single_line
@@ -72,14 +63,10 @@ def _title_from(text: str) -> str:
 
 
 def _sse(payload: dict) -> str:
-    """Format a Server-Sent Events data frame."""
     return f"data: {json.dumps(payload)}\n\n"
 
 
 async def _ai_title(user_msg: str, reply: str) -> str | None:
-    """Ask the model for a short, professional conversation title
-    (like ChatGPT/Gemini do). Returns None on any failure so callers
-    can fall back to simple truncation."""
     prompt = (
         "Write a concise title (3-6 words, plain text, no quotes, no trailing "
         "punctuation) summarizing this chat.\n\n"
@@ -112,7 +99,6 @@ async def list_conversations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[Conversation]:
-    """The caller's conversations, most recently active first (sidebar)."""
     result = await db.execute(
         select(Conversation)
         .where(Conversation.user_id == current_user.id)
@@ -151,7 +137,7 @@ async def delete_conversation(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     conversation = await _get_owned_conversation(db, current_user.id, conversation_id)
-    await db.delete(conversation)  # messages cascade via FK ondelete
+    await db.delete(conversation)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -177,14 +163,8 @@ async def send_message(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SendMessageResponse:
-    """Save the user's message, ask Gemini with full context, save the reply.
-
-    The whole thing is one transaction: if the AI call fails, nothing is
-    persisted, so the user can simply retry.
-    """
     conversation = await _get_owned_conversation(db, current_user.id, conversation_id)
 
-    # Is this the first message? (drives the auto-title)
     existing_count = await db.scalar(
         select(func.count())
         .select_from(Message)
@@ -192,14 +172,12 @@ async def send_message(
     )
     is_first_message = existing_count == 0
 
-    # 1) Save the user's message (flush so the history query below sees it).
     user_message = Message(
         conversation_id=conversation.id, role="user", content=body.content
     )
     db.add(user_message)
     await db.flush()
 
-    # 2) Assemble context: system instruction (persona) + full ordered history.
     system_prompt: str | None = None
     if conversation.persona_id is not None:
         persona = await db.get(Persona, conversation.persona_id)
@@ -213,8 +191,6 @@ async def send_message(
     )
     history = [(row.role, row.content) for row in history_rows.all()]
 
-    # 3) Call Gemini. Domain errors map to clean HTTP statuses; the session
-    #    rolls back automatically on exception so no partial write survives.
     try:
         reply_text = await gemini.generate_reply(system_prompt, history)
     except gemini.AINotConfigured:
@@ -228,7 +204,6 @@ async def send_message(
             detail=f"The AI service failed: {exc}",
         ) from exc
 
-    # 4) Save the reply, auto-title on the first turn, bump activity timestamp.
     assistant_message = Message(
         conversation_id=conversation.id, role="assistant", content=reply_text
     )
@@ -256,14 +231,6 @@ async def stream_message(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
-    """Send a message and stream the AI reply back as Server-Sent Events.
-
-    Events (each a JSON ``data:`` frame): ``start`` (user_message_id), ``token``
-    (a chunk of text), ``done`` (final title + full content), or ``error``.
-    The full reply is persisted with a fresh session once the stream finishes —
-    so even if the client hits Stop mid-stream, the partial text that was already
-    generated is saved and the thread stays consistent.
-    """
     conversation = await _get_owned_conversation(db, current_user.id, conversation_id)
 
     if not gemini.is_configured():
@@ -282,8 +249,6 @@ async def stream_message(
     existing_title = conversation.title
     cid = conversation.id
 
-    # Persist the user's turn up front so history includes it and it survives
-    # even if the reply is stopped.
     user_message = Message(conversation_id=cid, role="user", content=body.content)
     db.add(user_message)
     await db.commit()
@@ -316,8 +281,6 @@ async def stream_message(
         except gemini.AIRequestFailed as exc:
             error_detail = f"The AI service failed: {exc}"
         finally:
-            # Persist with a FRESH session: the request session may be tearing
-            # down (client disconnect), and we still want the partial saved.
             full = "".join(chunks).strip()
             final_title = new_title
             if full and is_first_message:
@@ -335,7 +298,6 @@ async def stream_message(
                             conv.updated_at = func.now()
                         await store.commit()
                     elif error_detail is not None:
-                        # Nothing generated and errored: drop the orphan user turn.
                         orphan = await store.get(Message, user_message_id)
                         if orphan is not None:
                             await store.delete(orphan)

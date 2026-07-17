@@ -1,9 +1,3 @@
-"""Authentication routes: register, login, and 'who am I'.
-
-Deliberately minimal — a username and a password go in, a JWT comes out, and
-`/me` proves the token works. No email, no verification flow, no refresh tokens.
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +18,6 @@ async def _get_user_by_username(db: AsyncSession, username: str) -> User | None:
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) -> Token:
-    """Create an account and return an access token so the user is logged in."""
     if await _get_user_by_username(db, body.username) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -41,7 +34,6 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
 
 @router.post("/login", response_model=Token)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token:
-    """Verify username + password and return an access token."""
     user = await _get_user_by_username(db, body.username)
     if user is None or not verify_password(body.password, user.hashed_password):
         raise HTTPException(
@@ -54,5 +46,4 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
 
 @router.get("/me", response_model=UserRead)
 async def me(current_user: User = Depends(get_current_user)) -> User:
-    """Return the currently authenticated user (protected route)."""
     return current_user

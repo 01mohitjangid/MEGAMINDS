@@ -1,19 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* ============ MegaMinds design tokens — Warm Editorial Minimal ============
-   Paper background, ink text, deep-green accent. Light-first (matches the
-   reference), with a calm dark variant via prefers-color-scheme. */
 :root {
-  --bg: #f4f2ec;            /* warm paper */
-  --surface: #ffffff;        /* cards */
-  --surface-2: #faf9f5;      /* subtle wells / inputs */
+  --bg: #f4f2ec;
+  --surface: #ffffff;
+  --surface-2: #faf9f5;
   --border: #e7e4db;
   --border-strong: #d5d1c4;
 
-  --text: #191b19;           /* soft ink */
+  --text: #191b19;
   --muted: #75786f;
 
-  --accent: #14735a;         /* deep green */
+  --accent: #14735a;
   --accent-strong: #0d5c47;
   --accent-soft: rgba(20, 115, 90, 0.1);
 
