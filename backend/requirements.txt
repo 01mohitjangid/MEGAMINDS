@@ -1,0 +1,15 @@
+# --- Web framework ---
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+
+# --- Database (async SQLAlchemy 2.0 + psycopg3 driver) ---
+sqlalchemy==2.0.43
+psycopg[binary]==3.2.10
+alembic==1.16.5
+greenlet==3.2.4  # required by SQLAlchemy's async engine
+
+# --- Config / settings ---
+pydantic-settings==2.11.0
+
+# Auth (Phase 2) and AI (Phase 3) dependencies are added in their own phases
+# to keep each phase's install surface small and verifiable.
