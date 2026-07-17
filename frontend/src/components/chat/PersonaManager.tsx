@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ApiError, personas as personaApi, type Persona } from "../../lib/api";
 import { ConfirmDialog } from "../ConfirmDialog";
+import { XIcon } from "../icons";
 
 interface PersonaManagerProps {
   personas: Persona[];
@@ -74,17 +76,28 @@ export function PersonaManager({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
+    <motion.div
+      className="modal-overlay"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.18 }}
+    >
+      <motion.div
         className="modal"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.92, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ type: "spring", stiffness: 420, damping: 30 }}
       >
         <header className="modal__header">
           <h3 className="modal__title">Manage personas</h3>
           <button className="modal__close" onClick={onClose} aria-label="Close">
-            ×
+            <XIcon size={18} />
           </button>
         </header>
 
@@ -174,16 +187,19 @@ export function PersonaManager({
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {confirmDeleteId !== null && (
-        <ConfirmDialog
-          title="Delete persona"
-          message="This persona will be removed. Conversations using it stay, but lose their persona."
-          onConfirm={() => remove(confirmDeleteId)}
-          onCancel={() => setConfirmDeleteId(null)}
-        />
-      )}
-    </div>
+      <AnimatePresence>
+        {confirmDeleteId !== null && (
+          <ConfirmDialog
+            key="confirm-persona-delete"
+            title="Delete persona"
+            message="This persona will be removed. Conversations using it stay, but lose their persona."
+            onConfirm={() => remove(confirmDeleteId)}
+            onCancel={() => setConfirmDeleteId(null)}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }

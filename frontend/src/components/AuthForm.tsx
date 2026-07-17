@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { ApiError } from "../lib/api";
 
 interface AuthFormProps {
@@ -42,9 +43,17 @@ export function AuthForm({
 
   return (
     <main className="shell">
-      <div className="card">
+      <motion.div
+        className="card"
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      >
         <header className="card__header">
-          <span className="badge">MegaMinds</span>
+          <span className="brand">
+            <span className="brand__orb" aria-hidden />
+            MegaMinds
+          </span>
           <h1>{title}</h1>
         </header>
 
@@ -89,7 +98,7 @@ export function AuthForm({
         <p className="auth-alt">
           {altPrompt} <Link to={altLinkTo}>{altLinkLabel}</Link>
         </p>
-      </div>
+      </motion.div>
     </main>
   );
 }
