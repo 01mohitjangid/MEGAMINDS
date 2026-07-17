@@ -43,7 +43,9 @@ class Settings(BaseSettings):
 
     # --- AI provider (consumed from Phase 3) ---
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    # gemini-flash-latest tracks Google's current free-tier flash model; the
+    # older pinned "gemini-2.0-flash" now has a 0 free-tier quota (retired).
+    gemini_model: str = "gemini-flash-latest"
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod
