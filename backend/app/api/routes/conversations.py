@@ -76,6 +76,23 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
+async def _ai_title(user_msg: str, reply: str) -> str | None:
+    """Ask the model for a short, professional conversation title
+    (like ChatGPT/Gemini do). Returns None on any failure so callers
+    can fall back to simple truncation."""
+    prompt = (
+        "Write a concise title (3-6 words, plain text, no quotes, no trailing "
+        "punctuation) summarizing this chat.\n\n"
+        f"User: {user_msg[:500]}\n\nAssistant: {reply[:400]}\n\nTitle:"
+    )
+    try:
+        title = await gemini.generate_reply(None, [("user", prompt)])
+    except Exception:  # noqa: BLE001 — titles are best-effort, never fail the send
+        return None
+    title = title.strip().strip('"').strip("'").splitlines()[0].strip()
+    return title[:_TITLE_MAX_LEN] if title else None
+
+
 @router.post("", response_model=ConversationRead, status_code=status.HTTP_201_CREATED)
 async def create_conversation(
     body: ConversationCreate,
@@ -302,6 +319,9 @@ async def stream_message(
             # Persist with a FRESH session: the request session may be tearing
             # down (client disconnect), and we still want the partial saved.
             full = "".join(chunks).strip()
+            final_title = new_title
+            if full and is_first_message:
+                final_title = (await _ai_title(body.content, full)) or new_title
             try:
                 async with AsyncSessionLocal() as store:
                     if full:
@@ -311,7 +331,7 @@ async def stream_message(
                         conv = await store.get(Conversation, cid)
                         if conv is not None:
                             if is_first_message:
-                                conv.title = new_title
+                                conv.title = final_title
                             conv.updated_at = func.now()
                         await store.commit()
                     elif error_detail is not None:
@@ -329,7 +349,7 @@ async def stream_message(
             yield _sse(
                 {
                     "type": "done",
-                    "title": new_title if is_first_message else existing_title,
+                    "title": final_title if is_first_message else existing_title,
                     "content": "".join(chunks).strip(),
                 }
             )

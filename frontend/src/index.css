@@ -1,29 +1,54 @@
-:root {
-  --bg: #0b0d12;
-  --surface: #151922;
-  --surface-2: #1c2130;
-  --border: #2a3040;
-  --text: #e6e9ef;
-  --muted: #9aa3b2;
-  --accent: #4f7cff;
-  --accent-soft: rgba(79, 124, 255, 0.14);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+/* ============ MegaMinds design tokens — Warm Editorial Minimal ============
+   Paper background, ink text, deep-green accent. Light-first (matches the
+   reference), with a calm dark variant via prefers-color-scheme. */
+:root {
+  --bg: #f4f2ec;            /* warm paper */
+  --surface: #ffffff;        /* cards */
+  --surface-2: #faf9f5;      /* subtle wells / inputs */
+  --border: #e7e4db;
+  --border-strong: #d5d1c4;
+
+  --text: #191b19;           /* soft ink */
+  --muted: #75786f;
+
+  --accent: #14735a;         /* deep green */
+  --accent-strong: #0d5c47;
+  --accent-soft: rgba(20, 115, 90, 0.1);
+
+  --danger: #d64550;
+  --ok: #14735a;
+
+  --radius: 14px;
+  --radius-lg: 22px;
+  --shadow-card: 0 1px 2px rgba(25, 27, 25, 0.04), 0 8px 24px -12px rgba(25, 27, 25, 0.1);
+  --shadow-pop: 0 12px 40px -12px rgba(25, 27, 25, 0.22);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg: #f4f6fb;
-    --surface: #ffffff;
-    --surface-2: #f2f4f9;
-    --border: #e2e6ef;
-    --text: #1b2030;
-    --muted: #667085;
-    --accent: #3358e0;
-    --accent-soft: rgba(51, 88, 224, 0.1);
+    --bg: #131512;
+    --surface: #1c1f1b;
+    --surface-2: #212420;
+    --border: #2c302a;
+    --border-strong: #3b403a;
+    --text: #ecede8;
+    --muted: #9ba198;
+    --accent: #35a184;
+    --accent-strong: #2c8a70;
+    --accent-soft: rgba(53, 161, 132, 0.14);
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+    --shadow-pop: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
   }
 }
 
@@ -39,6 +64,24 @@ body {
   color: var(--text);
 }
 
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+::selection { background: rgba(20, 115, 90, 0.22); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 999px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

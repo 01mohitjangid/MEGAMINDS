@@ -1,16 +1,21 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
 import { AuthProvider } from './auth/AuthProvider'
 import './index.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </BrowserRouter>
+    {/* reducedMotion="user" makes every motion spring honor the OS
+        "Reduce Motion" setting (CSS animations are handled in index.css). */}
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </BrowserRouter>
+    </MotionConfig>
   </StrictMode>,
 )

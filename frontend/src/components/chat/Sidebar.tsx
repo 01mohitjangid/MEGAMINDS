@@ -1,14 +1,13 @@
 import { useState, type KeyboardEvent } from "react";
-import type { Conversation, Persona } from "../../lib/api";
+import { AnimatePresence, motion } from "motion/react";
+import type { Conversation } from "../../lib/api";
+import { PencilIcon, PlusIcon, SparklesIcon, TrashIcon, XIcon } from "../icons";
 
 interface SidebarProps {
-  personas: Persona[];
   conversations: Conversation[];
   activeId: number | null;
-  newPersonaId: number | null;
   username: string;
   loading: boolean;
-  onPersonaChange: (personaId: number | null) => void;
   onNewChat: () => void;
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
@@ -20,13 +19,10 @@ interface SidebarProps {
 
 /** Left column: persona picker + New chat, the conversation list, and account. */
 export function Sidebar({
-  personas,
   conversations,
   activeId,
-  newPersonaId,
   username,
   loading,
-  onPersonaChange,
   onNewChat,
   onSelect,
   onDelete,
@@ -59,41 +55,25 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar__top">
         <div className="sidebar__brand">
-          <span className="badge">MegaMinds</span>
+          <span className="brand">
+            <span className="brand__orb" aria-hidden />
+            MegaMinds
+          </span>
           <button
             className="sidebar__close"
             onClick={onClose}
             aria-label="Close sidebar"
           >
-            ×
+            <XIcon size={18} />
           </button>
         </div>
 
-        <label className="sidebar__field">
-          <span className="auth-field__label">Persona for new chat</span>
-          <select
-            className="auth-input"
-            value={newPersonaId ?? ""}
-            onChange={(e) =>
-              onPersonaChange(e.target.value === "" ? null : Number(e.target.value))
-            }
-          >
-            <option value="">No persona</option>
-            {personas.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {p.is_default ? "" : " (custom)"}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <div className="sidebar__buttons">
           <button className="btn btn--block" onClick={onNewChat}>
-            + New chat
+            <PlusIcon size={15} /> New chat
           </button>
           <button className="btn btn--ghost btn--sm" onClick={onManagePersonas}>
-            Manage personas
+            <SparklesIcon size={14} /> Manage personas
           </button>
         </div>
       </div>
@@ -108,57 +88,71 @@ export function Sidebar({
         ) : conversations.length === 0 ? (
           <p className="sidebar__empty">No conversations yet.</p>
         ) : (
-          conversations.map((c) => (
-            <div
-              key={c.id}
-              className={`conv-item${c.id === activeId ? " conv-item--active" : ""}`}
-              onClick={() => editingId !== c.id && onSelect(c.id)}
-            >
-              {editingId === c.id ? (
-                <input
-                  className="conv-item__edit"
-                  value={draft}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={commitRename}
-                  onKeyDown={handleRenameKey}
-                />
-              ) : (
-                <span className="conv-item__title">{c.title}</span>
-              )}
+          <AnimatePresence initial={false}>
+            {conversations.map((c) => (
+              <motion.div
+                key={c.id}
+                layout
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16, height: 0, marginBottom: 0 }}
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                className={`conv-item${c.id === activeId ? " conv-item--active" : ""}`}
+                onClick={() => editingId !== c.id && onSelect(c.id)}
+              >
+                {editingId === c.id ? (
+                  <input
+                    className="conv-item__edit"
+                    value={draft}
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={handleRenameKey}
+                  />
+                ) : (
+                  <span className="conv-item__title">{c.title}</span>
+                )}
 
-              {editingId !== c.id && (
-                <span className="conv-item__actions">
-                  <button
-                    className="conv-item__btn"
-                    title="Rename"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      startRename(c);
-                    }}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    className="conv-item__btn conv-item__btn--danger"
-                    title="Delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(c.id);
-                    }}
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-            </div>
-          ))
+                {editingId !== c.id && (
+                  <span className="conv-item__actions">
+                    <button
+                      className="conv-item__btn"
+                      title="Rename"
+                      aria-label={`Rename ${c.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startRename(c);
+                      }}
+                    >
+                      <PencilIcon size={13} />
+                    </button>
+                    <button
+                      className="conv-item__btn conv-item__btn--danger"
+                      title="Delete"
+                      aria-label={`Delete ${c.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(c.id);
+                      }}
+                    >
+                      <TrashIcon size={13} />
+                    </button>
+                  </span>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
       </nav>
 
       <footer className="sidebar__footer">
-        <span className="sidebar__user">{username}</span>
+        <span className="sidebar__user">
+          <span className="sidebar__avatar" aria-hidden>
+            {username.slice(0, 1).toUpperCase()}
+          </span>
+          {username}
+        </span>
         <button className="btn btn--ghost btn--sm" onClick={onLogout}>
           Log out
         </button>
