@@ -276,14 +276,12 @@ export default function Chat() {
       <Sidebar
         conversations={conversations}
         activeId={activeId}
-        username={firstName}
         loading={loadingList}
         onNewChat={goHome}
         onSelect={openConversation}
         onDelete={(id) => setConfirmDeleteId(id)}
         onRename={handleRename}
         onManagePersonas={() => setPersonaManagerOpen(true)}
-        onLogout={logout}
         onClose={() => setSidebarOpen(false)}
       />
 

@@ -6,28 +6,24 @@ import { PencilIcon, PlusIcon, SparklesIcon, TrashIcon, XIcon } from "../icons";
 interface SidebarProps {
   conversations: Conversation[];
   activeId: number | null;
-  username: string;
   loading: boolean;
   onNewChat: () => void;
   onSelect: (id: number) => void;
   onDelete: (id: number) => void;
   onRename: (id: number, title: string) => void;
   onManagePersonas: () => void;
-  onLogout: () => void;
   onClose: () => void;
 }
 
 export function Sidebar({
   conversations,
   activeId,
-  username,
   loading,
   onNewChat,
   onSelect,
   onDelete,
   onRename,
   onManagePersonas,
-  onLogout,
   onClose,
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -144,18 +140,6 @@ export function Sidebar({
           </AnimatePresence>
         )}
       </nav>
-
-      <footer className="sidebar__footer">
-        <span className="sidebar__user">
-          <span className="sidebar__avatar" aria-hidden>
-            {username.slice(0, 1).toUpperCase()}
-          </span>
-          {username}
-        </span>
-        <button className="btn btn--ghost btn--sm" onClick={onLogout}>
-          Log out
-        </button>
-      </footer>
     </aside>
   );
 }
